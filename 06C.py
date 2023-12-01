@@ -18,16 +18,15 @@ class GeneticAlgorithm:
         self.coefficients = coefficients
 
         self.rng = np.random.default_rng()
-        self.population_size = 2500
-        self.max_generations = 1000
+        self.population_size = 1500
+        self.max_generations = 250
 
         self.population = self.rng.integers(low=0, high=self.devs_count, size=(self.population_size, self.tasks_count))
 
     def fitness(self, individual):
         total_time = np.zeros(self.devs_count)
         for i in range(self.tasks_count):
-            total_time[individual[i]] += self.tasks_time[i] * self.coefficients[
-                individual[i], self.tasks[i] - 1]
+            total_time[individual[i]] += self.tasks_time[i] * self.coefficients[individual[i], self.tasks[i] - 1]
         return np.max(total_time)
 
     def selection(self):
@@ -44,34 +43,39 @@ class GeneticAlgorithm:
         return child1, child2
 
     def mutation(self, individual):
-        # мутация с некоторой вероятностью (0.0002, условие ниже)
+        # мутация с некоторой вероятностью (0.01, условие ниже)
         mutated_gene = self.rng.integers(low=0, high=self.devs_count)
         mutation_point = self.rng.integers(low=0, high=self.tasks_count)
         individual[mutation_point] = mutated_gene
         return individual
 
-    def step(self):
+    def evolve(self):
         for generation in range(self.max_generations):
             selected_population = self.selection()
 
             new_population = []
             for i in range(0, len(selected_population), 2):
                 parent1, parent2 = selected_population[i], selected_population[i + 1]
-                child1, child2 = self.crossover(parent1, parent2)
+                crossover_point = self.rng.integers(low=1, high=self.tasks_count, size=1)[0]
 
-                if self.rng.random() < 0.0002:
-                    child1 = self.mutation(child1)
-                if self.rng.random() < 0.0002:
-                    child2 = self.mutation(child2)
+                child1 = np.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
+                child2 = np.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
+
+                child1 = self.mutation(child1) if self.rng.random() < 0.01 else child1
+                child2 = self.mutation(child2) if self.rng.random() < 0.01 else child2
 
                 new_population.extend([child1, child2])
 
-            top_percent = int(0.25 * self.population_size)  # выбор 25 % детей
+            top_percent = int(0.5 * self.population_size)  # выбор 50 % детей
             self.population[:top_percent] = self.selection()[:top_percent]
             self.population[top_percent:] = np.array(new_population)[:self.population_size - top_percent]
 
-        best_solution = self.population[np.argmin([self.fitness(ind) for ind in self.population])]
-        return best_solution
+            best_fitness = self.fitness(self.population[np.argmin([self.fitness(ind) for ind in self.population])])
+
+            print(f"Поколение {generation + 1}: {best_fitness}")
+
+        best_fitness = self.population[np.argmin([self.fitness(ind) for ind in self.population])]
+        return best_fitness
 
 
 # Чтение входных данных из файла
@@ -84,7 +88,7 @@ with open('input.txt') as f:
 
 ga = GeneticAlgorithm(tasks_count, tasks, tasks_time, devs_count, coefficients)
 
-best_solution = ga.step()
+best_solution = ga.evolve()
 
 with open('output.txt', 'w') as file:
     file.write(" ".join(map(lambda x: str(x + 1), best_solution)))
@@ -95,5 +99,5 @@ for i in range(ga.tasks_count):
 
 Tmax = np.max(best_developer_times)
 
-score = 100 / Tmax
+score = 100 / (10 ** 6 / Tmax)
 print("Score:", score)
