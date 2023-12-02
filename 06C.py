@@ -99,5 +99,5 @@ for i in range(ga.tasks_count):
 
 Tmax = np.max(best_developer_times)
 
-score = 100 / (10 ** 6 / Tmax)
+score = ((10 ** 6) / Tmax) / 10 ** 4
 print("Score:", score)
